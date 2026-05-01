@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>{{ user.name }}</h1>
+<p class="muted">Manager dashboard - {{ month_label }}</p>
+<div class="grid three">
+  <div class="card stat"><h3>{{ total_entries }}</h3><p>Total Time Sheets</p></div>
+  <div class="card stat"><h3>{{ total_evaluations }}</h3><p>Total Evaluations</p></div>
+  <div class="card stat"><h3>{{ pending }}</h3><p>Pending Approvals</p></div>
+</div>
+<div class="grid two mt">
+  <a class="card action" href="/manager/daily-entries">
+    <h3>All Daily Submissions</h3>
+    <p>Review team time sheets and evaluation completion.</p>
+  </a>
+  <a class="card action" href="/manager/export/team-month?month={{ month_value }}">
+    <h3>Export Team Month</h3>
+    <p>Download one Excel file for the whole team.</p>
+  </a>
+</div>
+
+<section class="card mt">
+  <h2>Export One User</h2>
+  <div class="grid two compact-grid">
+    {% for employee in employees %}
+      <a class="secondary-btn" href="/manager/export/user-month?user_id={{ employee.id }}&month={{ month_value }}">{{ employee.name }}</a>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

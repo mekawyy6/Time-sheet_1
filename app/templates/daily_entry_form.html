@@ -1,0 +1,83 @@
+
+{% extends 'base.html' %}
+{% block content %}
+<h1>Time Sheet</h1>
+<p class="muted">Step 1 of 2 — fill all required fields to continue.</p>
+{% if error %}<div class="alert">{{ error }}</div>{% endif %}
+<form method="post" action="{% if edit_mode and entry %}/record/{{ entry.id }}/edit{% else %}/submission/new{% endif %}" class="card form-grid wide auto-fill-form">
+  <label>Entry Date
+    <input type="date" name="entry_date" value="{{ form_data.entry_date if form_data.entry_date is defined else today }}" required />
+  </label>
+  <label>Site ID
+    <input type="text" name="site_id" value="{{ form_data.site_id if form_data.site_id is defined else '' }}" required placeholder="Enter site ID" />
+  </label>
+  <label>Area
+    <select name="area" id="area-select" required>
+      <option value="">Select area</option>
+      {% for area in areas %}<option value="{{ area }}" {% if form_data.area is defined and form_data.area == area %}selected{% endif %}>{{ area }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Team Leader
+    <input type="text" name="team_leader" value="{{ form_data.team_leader if form_data.team_leader is defined else '' }}" required />
+  </label>
+  <label>Work Start
+    <input type="time" id="work-start" name="work_start" value="{{ form_data.work_start if form_data.work_start is defined else '' }}" required />
+  </label>
+  <label>End Time
+    <input type="time" id="end-time" name="end_time" value="{{ form_data.end_time if form_data.end_time is defined else '' }}" required />
+  </label>
+  <label>On Site Duration
+    <input type="text" id="on-site-duration" value="{{ form_data.on_site_duration if form_data.on_site_duration is defined else '' }}" placeholder="Calculated automatically" readonly />
+  </label>
+  <label>Travel & Stay Type
+    <select name="travel_stay_type" required>
+      <option value="">Select</option>
+      {% for item in travel_types %}<option value="{{ item }}" {% if form_data.travel_stay_type is defined and form_data.travel_stay_type == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+    </select>
+  </label>
+  <label id="stay-place-wrapper" class="hidden">Stay Place
+    <select name="stay_place" id="stay-place-select"><option value="">Select stay place</option></select>
+  </label>
+  <label>Reservation Type
+    <select name="reservation_type" required>
+      <option value="">Select</option>
+      {% for item in reservation_types %}<option value="{{ item }}" {% if form_data.reservation_type is defined and form_data.reservation_type == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Expense
+    <input type="text" name="expense" value="{{ form_data.expense if form_data.expense is defined else '' }}" required />
+  </label>
+  <label>Car Details
+    <input type="text" name="car_details" value="{{ form_data.car_details if form_data.car_details is defined else '' }}" required />
+  </label>
+  <label class="full">Team Members
+    <textarea name="team_members_text" rows="3" required>{{ form_data.team_members_text if form_data.team_members_text is defined else '' }}</textarea>
+  </label>
+  <fieldset class="full checkbox-group required-group"><legend>Action</legend>
+    <div class="checkbox-grid">
+      {% set existing_actions = form_data.action_details if form_data.action_details is defined else [] %}
+      {% for item in action_options %}<label class="check-item"><input type="checkbox" name="action_details" value="{{ item }}" {% if item in existing_actions %}checked{% endif %}/> {{ item }}</label>{% endfor %}
+    </div>
+  </fieldset>
+  <label class="full">Comment
+    <textarea name="comment" rows="3">{{ form_data.comment if form_data.comment is defined else '' }}</textarea>
+  </label>
+  <div class="full actions-row">
+    <a href="/dashboard" class="secondary-btn">Cancel</a>
+    <button type="submit">{% if edit_mode %}Save and Continue{% else %}Save Step 1 and Continue{% endif %}</button>
+  </div>
+</form>
+<script>
+const stayPlaces = {{ stay_places | tojson }};
+const areaSelect = document.getElementById('area-select');
+const stayPlaceWrapper = document.getElementById('stay-place-wrapper');
+const stayPlaceSelect = document.getElementById('stay-place-select');
+const initialStayPlace = {{ (form_data.stay_place if form_data.stay_place is defined else '') | tojson }};
+const startInput = document.getElementById('work-start');
+const endInput = document.getElementById('end-time');
+const durationInput = document.getElementById('on-site-duration');
+function updateStayPlaces(){const area=areaSelect.value; const options=stayPlaces[area]||[]; stayPlaceSelect.innerHTML='<option value="">Select stay place</option>'; if(options.length===0){stayPlaceWrapper.classList.add('hidden'); stayPlaceSelect.required=false; stayPlaceSelect.value=''; return;} options.forEach((item)=>{const option=document.createElement('option'); option.value=item; option.textContent=item; if(item===initialStayPlace) option.selected=true; stayPlaceSelect.appendChild(option);}); stayPlaceWrapper.classList.remove('hidden'); stayPlaceSelect.required=true;}
+function updateDuration(){if(!startInput.value || !endInput.value){durationInput.value=''; return;} const [sh,sm]=startInput.value.split(':').map(Number); const [eh,em]=endInput.value.split(':').map(Number); const start=sh*60+sm; const end=eh*60+em; if(end<=start){durationInput.value=''; return;} const diff=end-start; const h=String(Math.floor(diff/60)).padStart(2,'0'); const m=String(diff%60).padStart(2,'0'); durationInput.value=`${h}:${m}`;}
+areaSelect.addEventListener('change', updateStayPlaces); startInput.addEventListener('input', updateDuration); endInput.addEventListener('input', updateDuration); updateStayPlaces(); updateDuration();
+</script>
+{% endblock %}

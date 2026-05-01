@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>{{ user.name }}</h1>
+<p class="muted">{{ month_label }} overview</p>
+<div class="grid two">
+  <a class="card action" href="/submission/new">
+    <h3>New Daily Submission</h3>
+    <p>Start Time Sheet then Site Evaluation in two steps.</p>
+  </a>
+  <a class="card action" href="/my-daily-records">
+    <h3>My Daily Records</h3>
+    <p>Review, edit, and export your submissions.</p>
+  </a>
+  <a class="card action" href="/my-evaluations">
+    <h3>My Evaluation Records</h3>
+    <p>Review technical evaluations and scores.</p>
+  </a>
+  <a class="card action" href="/export/my-month?month={{ month_value }}">
+    <h3>Export My Month</h3>
+    <p>Download your monthly Excel file.</p>
+  </a>
+</div>
+
+<section class="card mt">
+  <h2>Recent Daily Submissions</h2>
+  {% if recent_entries %}
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Site ID</th>
+          <th>Area</th>
+          <th>Travel Type</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for entry in recent_entries %}
+        <tr>
+          <td>{{ entry.entry_date }}</td>
+          <td>{{ entry.site_id }}</td>
+          <td>{{ entry.area or '-' }}</td>
+          <td>{{ entry.travel_stay_type or '-' }}</td>
+          <td><span class="badge">{{ entry.submission_status }}</span></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No records yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

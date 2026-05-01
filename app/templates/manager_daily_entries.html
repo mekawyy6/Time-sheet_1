@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>All Daily Submissions</h1>
+<div class="toolbar mb">
+  <a class="secondary-btn small-btn" href="/manager/export/team-month?month={{ month_value }}">Export Current Month</a>
+</div>
+<div class="card">
+  {% if records %}
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Employee</th>
+        <th>Site ID</th>
+        <th>Area</th>
+        <th>Travel Type</th>
+        <th>Evaluation</th>
+        <th>Submission</th>
+        <th>Approval</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry, employee in records %}
+      <tr>
+        <td>{{ entry.entry_date }}</td>
+        <td>{{ employee.name }}</td>
+        <td>{{ entry.site_id }}</td>
+        <td>{{ entry.area or '-' }}</td>
+        <td>{{ entry.travel_stay_type or '-' }}</td>
+        <td>{% if eval_map.get(entry.id) %}Done{% else %}Missing{% endif %}</td>
+        <td><span class="badge">{{ entry.submission_status }}</span></td>
+        <td>{{ entry.manager_approval }}</td>
+        <td>
+          {% if eval_map.get(entry.id) %}
+          <a href="/manager/review/{{ entry.id }}">Review</a>
+          {% else %}
+          -
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No records yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

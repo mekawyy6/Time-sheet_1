@@ -1,0 +1,18 @@
+
+{% extends 'base.html' %}
+{% block content %}
+<h1>{% if is_settings %}Settings{% else %}Setup Profile{% endif %}</h1>
+<p class="muted">Save your fixed details once. Team leader stays editable inside each daily submission.</p>
+<form method="post" action="/setup" class="card form-grid auto-fill-form" style="max-width:560px;">
+  <label>Full Name
+    <input type="text" name="full_name" value="{{ profile.name if profile else '' }}" required />
+  </label>
+  <label>Employee ID
+    <input type="text" name="employee_id" value="{{ profile.employee_id if profile else '' }}" required />
+  </label>
+  <div class="actions-row">
+    {% if is_settings %}<a class="secondary-btn" href="/dashboard">Back</a>{% endif %}
+    <button type="submit">Save{% if not is_settings %} & Continue{% endif %}</button>
+  </div>
+</form>
+{% endblock %}

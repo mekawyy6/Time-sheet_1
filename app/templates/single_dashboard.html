@@ -1,0 +1,29 @@
+
+{% extends 'base.html' %}
+{% block content %}
+<h1>Welcome, {{ profile.name }}</h1>
+<p class="muted">{{ month_label }} summary</p>
+<div class="grid two">
+  <a class="card action" href="/submission/new"><h3>New Daily Submission</h3><p>Time Sheet ثم Evaluation في خطوتين.</p></a>
+  <a class="card action" href="/records"><h3>My Records</h3><p>راجع السجلات وعدّل أو احذف أي يوم.</p></a>
+  <a class="card action" href="/export?month={{ month_value }}"><h3>Export Monthly Excel</h3><p>نزّل Excel الشهر الحالي.</p></a>
+  <a class="card action" href="/settings"><h3>Settings</h3><p>عدّل الاسم أو الـ ID في أي وقت.</p></a>
+</div>
+<section class="card mt">
+  <div class="grid two compact-grid">
+    <div class="inline-note">Days logged this month: <strong>{{ current_count }}</strong></div>
+    <div class="inline-note">Current employee ID: <strong>{{ profile.employee_id }}</strong></div>
+  </div>
+  <h2 class="mt">Recent Entries</h2>
+  {% if recent_entries %}
+  <table>
+    <thead><tr><th>Date</th><th>Site ID</th><th>Area</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for entry in recent_entries %}
+      <tr><td>{{ entry.entry_date }}</td><td>{{ entry.site_id }}</td><td>{{ entry.area }}</td><td><span class="badge">{{ entry.submission_status }}</span></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="muted">No records yet.</p>{% endif %}
+</section>
+{% endblock %}

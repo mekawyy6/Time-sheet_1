@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>My Evaluation Records</h1>
+
+<div class="card">
+  {% if records %}
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Day</th>
+        <th>Site ID</th>
+        <th>Site Type</th>
+        <th>Activity</th>
+        <th>Tower Type</th>
+        <th>Final Score</th>
+        <th>Comment</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in records %}
+      <tr>
+        <td>{{ entry.eval_date.strftime('%d-%b-%Y') if entry.eval_date else '-' }}</td>
+        <td>{{ entry.eval_date.strftime('%A') if entry.eval_date else '-' }}</td>
+        <td>{{ entry.site_id or '-' }}</td>
+        <td>{{ entry.site_type or '-' }}</td>
+        <td>{{ entry.activity or '-' }}</td>
+        <td>{{ entry.tower_type or '-' }}</td>
+        <td>{{ '%.4f'|format(entry.final_score) if entry.final_score is not none else '-' }}</td>
+        <td>{{ entry.comment or '-' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No evaluation records yet.</p>
+  {% endif %}
+</div>
+{% endblock %}
