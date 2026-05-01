@@ -44,18 +44,27 @@ def current_month_value() -> str:
     return datetime.now().strftime("%Y-%m")
 
 
-def get_profile(db: Session) -> User:
-    return db.query(User).filter(User.id == 1).first()
+def get_profile(request: Request, db: Session) -> User | None:
+    profile_id = request.cookies.get("profile_id")
+
+    if profile_id and profile_id.isdigit():
+        profile = db.query(User).filter(User.id == int(profile_id)).first()
+        if profile:
+            return profile
+
+    return None
 
 
 def profile_ready(profile: User | None) -> bool:
     return bool(profile and profile.name and profile.employee_id)
 
 
-def ensure_profile(db: Session):
-    profile = get_profile(db)
-    if not profile_ready(profile):
-        return RedirectResponse(url="/setup", status_code=status.HTTP_302_FOUND)
+def ensure_profile(request: Request, db: Session):
+    profile = get_profile(request, db)
+
+    if not profile:
+        return RedirectResponse(url="/setup", status_code=302)
+
     return profile
 
 
@@ -125,10 +134,15 @@ def calc_eval_scores(payload: dict[str, str], site_type: str | None) -> dict[str
     }
 
 
-def duplicate_entry_exists(db: Session, entry_date: date, exclude_id: int | None = None) -> bool:
-    query = db.query(DailyEntry).filter(DailyEntry.user_id == 1, DailyEntry.entry_date == entry_date)
+def duplicate_entry_exists(db: Session, user_id: int, entry_date: date, exclude_id: int | None = None):
+    query = db.query(DailyEntry).filter(
+        DailyEntry.user_id == user_id,
+        DailyEntry.entry_date == entry_date
+    )
+
     if exclude_id is not None:
         query = query.filter(DailyEntry.id != exclude_id)
+
     return db.query(query.exists()).scalar()
 
 
@@ -386,8 +400,8 @@ def build_monthly_export(entries: list[DailyEntry], eval_map: dict[int, SiteEval
 
 # ---------- Routes ----------
 @router.get("/")
-def root(db: Session = Depends(get_db)):
-    profile = get_profile(db)
+def root(request: Request, db: Session = Depends(get_db)):
+    profile = get_profile(request, db)
     if not profile_ready(profile):
         return RedirectResponse(url="/setup", status_code=status.HTTP_302_FOUND)
     return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
@@ -395,7 +409,7 @@ def root(db: Session = Depends(get_db)):
 
 @router.get("/setup")
 def setup_page(request: Request, db: Session = Depends(get_db)):
-    profile = get_profile(db)
+    profile = get_profile(request, db)
     return templates.TemplateResponse(
         "setup_profile.html",
         {"request": request, "profile": profile, "month_label": current_month_label(), "title": "Setup Profile"},
@@ -404,28 +418,53 @@ def setup_page(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/setup")
 def setup_submit(
+    request: Request,
     full_name: Annotated[str, Form(...)],
     employee_id: Annotated[str, Form(...)],
     db: Session = Depends(get_db),
 ):
-    profile = get_profile(db)
-    profile.name = full_name.strip()
-    profile.employee_id = employee_id.strip()
-    db.add(profile)
-    db.commit()
-    return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+    emp_id = employee_id.strip()
 
+    # 🔍 شوف هل اليوزر موجود
+    profile = db.query(User).filter(User.employee_id == emp_id).first()
+
+    if not profile:
+        # 🆕 اعمل يوزر جديد
+        profile = User(
+            name=full_name.strip(),
+            employee_id=emp_id,
+            email=f"{emp_id}@app.local",
+            password_hash="no_password",
+        )
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+    else:
+        # ✏️ حدّث الاسم لو عايز
+        profile.name = full_name.strip()
+        db.commit()
+
+    # 🍪 خزّن في cookie
+    response = RedirectResponse(url="/dashboard", status_code=302)
+    response.set_cookie(
+        key="profile_id",
+        value=str(profile.id),
+        max_age=60 * 60 * 24 * 365 * 5,
+    )
+
+    return response
+    return response
 
 @router.get("/dashboard")
 def dashboard(request: Request, db: Session = Depends(get_db)):
-    profile = ensure_profile(db)
+    profile = ensure_profile(request, db)
     if isinstance(profile, RedirectResponse):
         return profile
     current_start, current_end = month_bounds(current_month_value())
-    recent_entries = db.query(DailyEntry).filter(DailyEntry.user_id == 1).order_by(DailyEntry.entry_date.desc()).limit(5).all()
+    recent_entries = db.query(DailyEntry).filter(DailyEntry.user_id == profile.id).order_by(DailyEntry.entry_date.desc()).limit(5).all()
     current_count = (
         db.query(DailyEntry)
-        .filter(DailyEntry.user_id == 1, DailyEntry.entry_date >= current_start, DailyEntry.entry_date < current_end)
+        .filter(DailyEntry.user_id == profile.id, DailyEntry.entry_date >= current_start, DailyEntry.entry_date < current_end)
         .count()
     )
     return templates.TemplateResponse(
@@ -444,7 +483,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/submission/new")
 def submission_new(request: Request, db: Session = Depends(get_db)):
-    profile = ensure_profile(db)
+    profile = ensure_profile(request, db)
     if isinstance(profile, RedirectResponse):
         return profile
     return templates.TemplateResponse(
@@ -487,7 +526,7 @@ def submission_create(
     comment: Annotated[str | None, Form()] = None,
     db: Session = Depends(get_db),
 ):
-    profile = ensure_profile(db)
+    profile = ensure_profile(request, db)
     if isinstance(profile, RedirectResponse):
         return profile
 
@@ -534,7 +573,7 @@ def submission_create(
             status_code=400,
         )
 
-    if duplicate_entry_exists(db, entry_date):
+    if duplicate_entry_exists(db, profile.id, entry_date):
         return templates.TemplateResponse(
             "daily_entry_form.html",
             {
@@ -558,7 +597,7 @@ def submission_create(
 
     # ✅ إنشاء الريكورد
     entry = DailyEntry(
-        user_id=1,
+        user_id=profile.id,
         entry_date=entry_date,
         site_id=site_id.strip(),
         area=area,
@@ -592,10 +631,10 @@ def submission_create(
 
 @router.get("/submission/{entry_id}/evaluation")
 def evaluation_page(entry_id: int, request: Request, db: Session = Depends(get_db)):
-    profile = ensure_profile(db)
+    profile = ensure_profile(request, db)
     if isinstance(profile, RedirectResponse):
         return profile
-    entry = db.query(DailyEntry).filter(DailyEntry.id == entry_id, DailyEntry.user_id == 1).first()
+    entry = db.query(DailyEntry).filter(DailyEntry.id == entry_id, DailyEntry.user_id == profile.id).first()
     if not entry:
         return RedirectResponse(url="/records", status_code=status.HTTP_302_FOUND)
     evaluation = db.query(SiteEvaluation).filter(SiteEvaluation.daily_entry_id == entry.id).first()
@@ -657,10 +696,10 @@ def evaluation_submit(
     comment: Annotated[str | None, Form()] = None,
     db: Session = Depends(get_db),
 ):
-    profile = ensure_profile(db)
+    profile = ensure_profile(request, db)
     if isinstance(profile, RedirectResponse):
         return profile
-    entry = db.query(DailyEntry).filter(DailyEntry.id == entry_id, DailyEntry.user_id == 1).first()
+    entry = db.query(DailyEntry).filter(DailyEntry.id == entry_id, DailyEntry.user_id == profile.id).first()
     if not entry:
         return RedirectResponse(url="/records", status_code=status.HTTP_302_FOUND)
 
@@ -681,7 +720,7 @@ def evaluation_submit(
     if not evaluation:
         evaluation = SiteEvaluation(
             daily_entry_id=entry.id,
-            user_id=1,
+            user_id=profile.id,
             eval_date=entry.entry_date,
             site_id=entry.site_id,
             area=entry.area,
@@ -721,7 +760,7 @@ def evaluation_submit(
 
 @router.get("/records")
 def records(request: Request, db: Session = Depends(get_db)):
-    profile = ensure_profile(db)
+    profile = ensure_profile(request, db)
     if isinstance(profile, RedirectResponse):
         return profile
     entries = db.query(DailyEntry).filter(DailyEntry.user_id == profile.id).order_by(DailyEntry.entry_date.desc()).all()
@@ -737,7 +776,7 @@ def records(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/record/{entry_id}/edit")
 def edit_entry_page(entry_id: int, request: Request, db: Session = Depends(get_db)):
-    profile = ensure_profile(db)
+    profile = ensure_profile(request, db)
     if isinstance(profile, RedirectResponse):
         return profile
     entry = db.query(DailyEntry).filter(DailyEntry.id == entry_id, DailyEntry.user_id == profile.id).first()
@@ -800,17 +839,17 @@ def edit_entry_submit(
     comment: Annotated[str | None, Form()] = None,
     db: Session = Depends(get_db),
 ):
-    profile = ensure_profile(db)
+    profile = ensure_profile(request, db)
     if isinstance(profile, RedirectResponse):
         return profile
-    entry = db.query(DailyEntry).filter(DailyEntry.id == entry_id, DailyEntry.user_id == 1).first()
+    entry = db.query(DailyEntry).filter(DailyEntry.id == entry_id, DailyEntry.user_id == profile.id).first()
     if not entry:
         return RedirectResponse(url="/records", status_code=status.HTTP_302_FOUND)
     start_obj = parse_time_value(work_start)
     end_obj = parse_time_value(end_time)
     if not start_obj or not end_obj or end_obj <= start_obj:
         return RedirectResponse(url=f"/record/{entry.id}/edit", status_code=status.HTTP_302_FOUND)
-    if duplicate_entry_exists(db, entry_date, exclude_id=entry.id):
+    if duplicate_entry_exists(db, profile.id, entry_date, exclude_id=entry.id):
         return RedirectResponse(url=f"/record/{entry.id}/edit", status_code=status.HTTP_302_FOUND)
 
     entry.entry_date = entry_date
@@ -842,7 +881,7 @@ def edit_entry_submit(
 
 @router.post("/record/{entry_id}/delete")
 def delete_entry(entry_id: int, db: Session = Depends(get_db)):
-    profile = ensure_profile(db)
+    profile = ensure_profile(request, db)
     if isinstance(profile, RedirectResponse):
         return profile
 
@@ -861,7 +900,7 @@ def delete_entry(entry_id: int, db: Session = Depends(get_db)):
 
 @router.get("/export")
 def export_month(month: str | None = None, db: Session = Depends(get_db)):
-    profile = ensure_profile(db)
+    profile = ensure_profile(request, db)
     if isinstance(profile, RedirectResponse):
         return profile
 
@@ -901,7 +940,7 @@ def export_month(month: str | None = None, db: Session = Depends(get_db)):
 
 @router.get("/settings")
 def settings_page(request: Request, db: Session = Depends(get_db)):
-    profile = get_profile(db)
+    profile = get_profile(request, db)
     return templates.TemplateResponse(
         "setup_profile.html",
         {"request": request, "profile": profile, "month_label": current_month_label(), "is_settings": True, "title": "Settings"},
