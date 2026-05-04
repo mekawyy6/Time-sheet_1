@@ -1,29 +1,76 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>{{ user.name }}</h1>
-<p class="muted">Manager dashboard - {{ month_label }}</p>
-<div class="grid three">
-  <div class="card stat"><h3>{{ total_entries }}</h3><p>Total Time Sheets</p></div>
-  <div class="card stat"><h3>{{ total_evaluations }}</h3><p>Total Evaluations</p></div>
-  <div class="card stat"><h3>{{ pending }}</h3><p>Pending Approvals</p></div>
-</div>
-<div class="grid two mt">
-  <a class="card action" href="/manager/daily-entries">
-    <h3>All Daily Submissions</h3>
-    <p>Review team time sheets and evaluation completion.</p>
-  </a>
-  <a class="card action" href="/manager/export/team-month?month={{ month_value }}">
-    <h3>Export Team Month</h3>
-    <p>Download one Excel file for the whole team.</p>
-  </a>
-</div>
+
+<h1>Manager Dashboard</h1>
+<p class="muted">Monthly summary for all submitted users.</p>
+
+<section class="card">
+  <form method="get" action="/manager" class="toolbar" style="gap:10px; align-items:center; flex-wrap:wrap;">
+    <label style="margin:0;">Month
+      <input type="month" name="month" value="{{ month_value }}" required>
+    </label>
+
+```
+<button type="submit">View</button>
+
+<a class="secondary-btn" href="/manager/export-summary?month={{ month_value }}">Export Summary</a>
+<a class="secondary-btn" href="/manager/export-all?month={{ month_value }}">Export All Users</a>
+```
+
+  </form>
+</section>
 
 <section class="card mt">
-  <h2>Export One User</h2>
+  <h2>Totals</h2>
+
   <div class="grid two compact-grid">
-    {% for employee in employees %}
-      <a class="secondary-btn" href="/manager/export/user-month?user_id={{ employee.id }}&month={{ month_value }}">{{ employee.name }}</a>
-    {% endfor %}
+    <div class="inline-note">Logged Days: <strong>{{ totals.logged_days if totals else 0 }}</strong></div>
+    <div class="inline-note">Travel & Stay: <strong>{{ totals.travel_days if totals else 0 }}</strong></div>
+    <div class="inline-note">Return Days: <strong>{{ totals.return_days if totals else 0 }}</strong></div>
+    <div class="inline-note">Total Expense: <strong>{{ '%.2f'|format(totals.total_expense if totals else 0) }}</strong></div>
+    <div class="inline-note">Total Score: <strong>{{ '%.2f'|format(totals.total_score if totals else 0) }}</strong></div>
   </div>
+</section>
+
+<section class="card mt">
+  <h2>Summary - {{ month_value }}</h2>
+
+{% if summary_rows %}
+
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>ID</th>
+        <th>Logged Days</th>
+        <th>Travel & Stay</th>
+        <th>Return Days</th>
+        <th>Total Expense</th>
+        <th>Total Score</th>
+        <th>Average Score</th>
+      </tr>
+    </thead>
+
+```
+<tbody>
+  {% for item in summary_rows %}
+  <tr>
+    <td>{{ item.name }}</td>
+    <td>{{ item.employee_id }}</td>
+    <td>{{ item.logged_days }}</td>
+    <td>{{ item.travel_days }}</td>
+    <td>{{ item.return_days }}</td>
+    <td>{{ '%.2f'|format(item.total_expense) }}</td>
+    <td>{{ '%.2f'|format(item.total_score) }}</td>
+    <td>{{ '%.2f'|format(item.avg_score) }}</td>
+  </tr>
+  {% endfor %}
+</tbody>
+```
+
+  </table>
+  {% else %}
+    <p class="muted">No records found for this month.</p>
+  {% endif %}
 </section>
 {% endblock %}
