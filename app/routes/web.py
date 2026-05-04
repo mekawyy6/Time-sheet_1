@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import calendar
 import json
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from datetime import date, datetime, time
 from io import BytesIO
 from typing import Annotated
 
-from fastapi.responses import Response, RedirectResponse
 from fastapi import APIRouter, Depends, Form, Request, status
-from fastapi.responses import RedirectResponse, Response, StreamingResponse
+from fastapi.responses import RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -33,6 +32,52 @@ from app.models.user import User
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+
+# ---------- Access control ----------
+USER_CREDENTIALS = {
+    "520783": {"name": "Karim Salama", "password": "48125"},
+    "520787": {"name": "Abdallah Helmy", "password": "90314"},
+    "520786": {"name": "Khaled Abdulaziz", "password": "27561"},
+    "520788": {"name": "Mohamed Haggag", "password": "61482"},
+    "520782": {"name": "Ali Zin", "password": "35097"},
+    "520918": {"name": "Ramy Eladrosy", "password": "72814"},
+    "520790": {"name": "Hazem Eldee", "password": "16493"},
+    "520950": {"name": "Ahmed Elsafty", "password": "59271"},
+    "520925": {"name": "Ayman Morsy", "password": "83740"},
+    "520926": {"name": "Mostafa Abdulhafez", "password": "24618"},
+    "520960": {"name": "Mostafa ElGhaly", "password": "71359"},
+    "520978": {"name": "Ahmed Moawad", "password": "48503"},
+    "520973": {"name": "Khaled EL Gamal", "password": "93027"},
+    "521060": {"name": "Adel Meligy", "password": "15846"},
+    "521030": {"name": "Hany Badawy", "password": "60419"},
+    "521041": {"name": "Tahseen Hussein", "password": "37258"},
+    "521047": {"name": "Ahmed Soliman", "password": "81934"},
+    "521096": {"name": "AbdelSamie ElShahat", "password": "26795"},
+    "521095": {"name": "Alaa Mordi", "password": "54081"},
+    "521103": {"name": "Ahmed AbdelHamid", "password": "19376"},
+    "521138": {"name": "Ahmed Madkour", "password": "68245"},
+    "521177": {"name": "Mahmoud Bakr", "password": "75420"},
+    "521246": {"name": "Ahmed Atteya", "password": "31864"},
+    "521253": {"name": "Ahmed ElTantawy", "password": "90753"},
+    "521344": {"name": "Youssef AbdElAziz", "password": "42697"},
+    "521345": {"name": "Ahmed Gamal", "password": "56120"},
+    "521346": {"name": "Islam Hassan", "password": "83416"},
+    "521366": {"name": "Ibrahim Ghalama", "password": "27584"},
+    "5911915": {"name": "Adel salama", "password": "69315"},
+    "5911916": {"name": "Mohamed zaki", "password": "14028"},
+    "5912403": {"name": "Mahmoud Gomaa", "password": "85731"},
+    "18855": {"name": "Youssef Mekawy", "password": "11223"},
+    "admin": {"name": "Admin", "password": "73951"},
+}
+
+# Keep this derived dict for manager summaries and exports.
+ALLOWED_USERS = {employee_id: data["name"] for employee_id, data in USER_CREDENTIALS.items()}
+
+ADMIN_IDS = {"admin"}
+
+
+def is_admin(profile: User | None) -> bool:
+    return bool(profile and profile.employee_id in ADMIN_IDS)
 
 
 # ---------- General helpers ----------
@@ -404,6 +449,10 @@ def root(request: Request, db: Session = Depends(get_db)):
     profile = get_profile(request, db)
     if not profile_ready(profile):
         return RedirectResponse(url="/setup", status_code=status.HTTP_302_FOUND)
+
+    if is_admin(profile):
+        return RedirectResponse(url="/manager", status_code=status.HTTP_302_FOUND)
+
     return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
 
 
@@ -412,48 +461,97 @@ def setup_page(request: Request, db: Session = Depends(get_db)):
     profile = get_profile(request, db)
     return templates.TemplateResponse(
         "setup_profile.html",
-        {"request": request, "profile": profile, "month_label": current_month_label(), "title": "Setup Profile"},
+        {
+            "request": request,
+            "profile": profile,
+            "month_label": current_month_label(),
+            "title": "Login",
+            "is_settings": False,
+            "is_admin": False,
+        },
     )
 
 
 @router.post("/setup")
 def setup_submit(
     request: Request,
-    full_name: Annotated[str, Form(...)],
     employee_id: Annotated[str, Form(...)],
+    password: Annotated[str, Form(...)],
     db: Session = Depends(get_db),
 ):
     emp_id = employee_id.strip()
+    user_data = USER_CREDENTIALS.get(emp_id)
 
-    # 🔍 شوف هل اليوزر موجود
+    if not user_data:
+        return templates.TemplateResponse(
+            "setup_profile.html",
+            {
+                "request": request,
+                "profile": None,
+                "month_label": current_month_label(),
+                "title": "Login",
+                "is_settings": False,
+                "is_admin": False,
+                "error": "ID not allowed. Please contact manager.",
+            },
+            status_code=400,
+        )
+
+    if password.strip() != user_data["password"]:
+        return templates.TemplateResponse(
+            "setup_profile.html",
+            {
+                "request": request,
+                "profile": None,
+                "month_label": current_month_label(),
+                "title": "Login",
+                "is_settings": False,
+                "is_admin": False,
+                "error": "Wrong password.",
+            },
+            status_code=400,
+        )
+
     profile = db.query(User).filter(User.employee_id == emp_id).first()
-
     if not profile:
-        # 🆕 اعمل يوزر جديد
         profile = User(
-            name=full_name.strip(),
+            name=user_data["name"],
             employee_id=emp_id,
             email=f"{emp_id}@app.local",
-            password_hash="no_password",
+            password_hash="static_password_in_code",
         )
         db.add(profile)
         db.commit()
         db.refresh(profile)
     else:
-        # ✏️ حدّث الاسم لو عايز
-        profile.name = full_name.strip()
+        # Always keep official name controlled by USER_CREDENTIALS.
+        profile.name = user_data["name"]
+        if not profile.email:
+            profile.email = f"{emp_id}@app.local"
+        if not profile.password_hash:
+            profile.password_hash = "static_password_in_code"
+        db.add(profile)
         db.commit()
+        db.refresh(profile)
 
-    # 🍪 خزّن في cookie
-    response = RedirectResponse(url="/dashboard", status_code=302)
+    redirect_url = "/manager" if emp_id in ADMIN_IDS else "/dashboard"
+    response = RedirectResponse(url=redirect_url, status_code=302)
     response.set_cookie(
         key="profile_id",
         value=str(profile.id),
         max_age=60 * 60 * 24 * 365 * 5,
+        httponly=True,
+        samesite="lax",
     )
+    return response
 
+
+@router.get("/logout")
+def logout():
+    response = RedirectResponse(url="/setup", status_code=status.HTTP_302_FOUND)
+    response.delete_cookie("profile_id")
     return response
-    return response
+
 
 @router.get("/dashboard")
 def dashboard(request: Request, db: Session = Depends(get_db)):
@@ -476,6 +574,7 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
             "month_value": current_month_value(),
             "recent_entries": recent_entries,
             "current_count": current_count,
+            "is_admin": is_admin(profile),
             "title": "Home",
         },
     )
@@ -486,6 +585,9 @@ def submission_new(request: Request, db: Session = Depends(get_db)):
     profile = ensure_profile(request, db)
     if isinstance(profile, RedirectResponse):
         return profile
+    if is_admin(profile):
+     return RedirectResponse(url="/manager", status_code=302)
+    
     return templates.TemplateResponse(
         "daily_entry_form.html",
         {
@@ -634,6 +736,9 @@ def evaluation_page(entry_id: int, request: Request, db: Session = Depends(get_d
     profile = ensure_profile(request, db)
     if isinstance(profile, RedirectResponse):
         return profile
+    
+    if is_admin(profile):
+     return RedirectResponse(url="/manager", status_code=302)
     entry = db.query(DailyEntry).filter(DailyEntry.id == entry_id, DailyEntry.user_id == profile.id).first()
     if not entry:
         return RedirectResponse(url="/records", status_code=status.HTTP_302_FOUND)
@@ -880,14 +985,14 @@ def edit_entry_submit(
     return RedirectResponse(url=f"/submission/{entry.id}/evaluation", status_code=status.HTTP_302_FOUND)
 
 @router.post("/record/{entry_id}/delete")
-def delete_entry(entry_id: int, db: Session = Depends(get_db)):
+def delete_entry(entry_id: int, request: Request, db: Session = Depends(get_db)):
     profile = ensure_profile(request, db)
     if isinstance(profile, RedirectResponse):
         return profile
 
     entry = db.query(DailyEntry).filter(
         DailyEntry.id == entry_id,
-        DailyEntry.user_id == profile.id
+        DailyEntry.user_id == profile.id,
     ).first()
 
     if entry:
@@ -897,13 +1002,14 @@ def delete_entry(entry_id: int, db: Session = Depends(get_db)):
 
     return RedirectResponse(url="/records", status_code=status.HTTP_302_FOUND)
 
-
 @router.get("/export")
-def export_month(month: str | None = None, db: Session = Depends(get_db)):
+def export_month(request: Request, month: str | None = None, db: Session = Depends(get_db)):
     profile = ensure_profile(request, db)
     if isinstance(profile, RedirectResponse):
         return profile
-
+    
+    if is_admin(profile):
+     return RedirectResponse(url="/manager", status_code=302)
     month_value = month or current_month_value()
     start, end = month_bounds(month_value)
 
@@ -912,7 +1018,7 @@ def export_month(month: str | None = None, db: Session = Depends(get_db)):
         .filter(
             DailyEntry.user_id == profile.id,
             DailyEntry.entry_date >= start,
-            DailyEntry.entry_date < end
+            DailyEntry.entry_date < end,
         )
         .order_by(DailyEntry.entry_date.asc())
         .all()
@@ -932,18 +1038,247 @@ def export_month(month: str | None = None, db: Session = Depends(get_db)):
     return Response(
         content=stream.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename}"'
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# ---------- Manager helpers and routes ----------
+def safe_expense(value: str | None) -> float:
+    return to_float(value)
+
+
+def is_stay_day(value: str | None) -> bool:
+    return (value or "").strip().lower() == "stay"
+
+
+def is_return_day(value: str | None) -> bool:
+    normalized = (value or "").strip().lower()
+    return normalized in {"back to cairo", "travel without stay"} or "back" in normalized
+
+
+def get_month_entries(db: Session, month_value: str) -> list[DailyEntry]:
+    start, end = month_bounds(month_value)
+    return (
+        db.query(DailyEntry)
+        .filter(DailyEntry.entry_date >= start, DailyEntry.entry_date < end)
+        .order_by(DailyEntry.entry_date.asc())
+        .all()
+    )
+
+
+def get_eval_map(db: Session, entries: list[DailyEntry]) -> dict[int, SiteEvaluation]:
+    if not entries:
+        return {}
+    eval_rows = (
+        db.query(SiteEvaluation)
+        .filter(SiteEvaluation.daily_entry_id.in_([entry.id for entry in entries]))
+        .all()
+    )
+    return {row.daily_entry_id: row for row in eval_rows}
+
+
+def build_manager_summary(db: Session, month_value: str) -> list[dict]:
+    entries = get_month_entries(db, month_value)
+    eval_map = get_eval_map(db, entries)
+    db_users = {u.employee_id: u for u in db.query(User).all()}
+
+    rows = []
+    for employee_id, official_name in ALLOWED_USERS.items():
+        if employee_id in ADMIN_IDS:
+            continue
+        user = db_users.get(employee_id)
+        user_entries = [entry for entry in entries if user and entry.user_id == user.id]
+        scores = [eval_map[entry.id].final_score or 0 for entry in user_entries if entry.id in eval_map]
+        total_score = sum(scores)
+        avg_score = total_score / len(scores) if scores else 0
+        rows.append({
+            "name": official_name,
+            "employee_id": employee_id,
+            "logged_days": len(user_entries),
+            "travel_days": sum(1 for entry in user_entries if is_stay_day(entry.travel_stay_type)),
+            "return_days": sum(1 for entry in user_entries if is_return_day(entry.travel_stay_type)),
+            "total_expense": sum(safe_expense(entry.expense) for entry in user_entries),
+            "total_score": total_score,
+            "avg_score": avg_score,
+        })
+    return rows
+
+
+def write_simple_table(ws, headers: list[str], rows: list[list]):
+    header_fill = PatternFill("solid", fgColor="00B050")
+    thin = Side(style="thin", color="000000")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    for col_idx, title in enumerate(headers, start=1):
+        cell = ws.cell(1, col_idx, title)
+        cell.font = Font(bold=True)
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = border
+
+    for row_idx, row_values in enumerate(rows, start=2):
+        for col_idx, value in enumerate(row_values, start=1):
+            cell = ws.cell(row_idx, col_idx, value)
+            cell.border = border
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    for col_idx in range(1, len(headers) + 1):
+        max_len = 0
+        for row_idx in range(1, ws.max_row + 1):
+            value = ws.cell(row_idx, col_idx).value
+            if value is not None:
+                max_len = max(max_len, len(str(value)))
+        ws.column_dimensions[get_column_letter(col_idx)].width = min(max_len + 2, 30)
+    ws.freeze_panes = "A2"
+
+
+@router.get("/manager")
+def manager_dashboard(request: Request, month: str | None = None, db: Session = Depends(get_db)):
+    profile = ensure_profile(request, db)
+    if isinstance(profile, RedirectResponse):
+        return profile
+    if not is_admin(profile):
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+
+    month_value = month or current_month_value()
+    summary_rows = build_manager_summary(db, month_value)
+    totals = {
+        "logged_days": sum(row["logged_days"] for row in summary_rows),
+        "travel_days": sum(row["travel_days"] for row in summary_rows),
+        "return_days": sum(row["return_days"] for row in summary_rows),
+        "total_expense": sum(row["total_expense"] for row in summary_rows),
+        "total_score": sum(row["total_score"] for row in summary_rows),
+    }
+    return templates.TemplateResponse(
+        "manager_dashboard.html",
+        {
+            "request": request,
+            "profile": profile,
+            "month_label": current_month_label(),
+            "month_value": month_value,
+            "summary_rows": summary_rows,
+            "totals": totals,
+            "title": "Manager Dashboard",
         },
     )
 
 
+@router.get("/manager/export-summary")
+def manager_export_summary(request: Request, month: str | None = None, db: Session = Depends(get_db)):
+    profile = ensure_profile(request, db)
+    if isinstance(profile, RedirectResponse):
+        return profile
+    if not is_admin(profile):
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+
+    month_value = month or current_month_value()
+    summary_rows = build_manager_summary(db, month_value)
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Summary"
+    headers = ["Name", "ID", "Logged Days", "Travel & Stay Days", "Return Days", "Total Expense", "Total Score", "Average Score"]
+    rows = [
+        [
+            row["name"], row["employee_id"], row["logged_days"], row["travel_days"], row["return_days"],
+            round(row["total_expense"], 2), round(row["total_score"], 4), round(row["avg_score"], 4),
+        ]
+        for row in summary_rows
+    ]
+    write_simple_table(ws, headers, rows)
+
+    stream = BytesIO()
+    wb.save(stream)
+    stream.seek(0)
+    return Response(
+        content=stream.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="manager_summary_{month_value}.xlsx"'},
+    )
+
+
+@router.get("/manager/export-all")
+def manager_export_all(request: Request, month: str | None = None, db: Session = Depends(get_db)):
+    profile = ensure_profile(request, db)
+    if isinstance(profile, RedirectResponse):
+        return profile
+    if not is_admin(profile):
+        return RedirectResponse(url="/dashboard", status_code=status.HTTP_302_FOUND)
+
+    month_value = month or current_month_value()
+    entries = get_month_entries(db, month_value)
+    eval_map = get_eval_map(db, entries)
+    users = {u.id: u for u in db.query(User).all()}
+
+    wb = Workbook()
+    ws1 = wb.active
+    ws1.title = "Time Sheet"
+    time_headers = [
+        "Name", "ID", "Date", "Day", "Site ID", "Area", "Stay Place", "Team Leader", "Team Members",
+        "Car (Name/No./Vendor)", "Action Details", "Work Start", "On Site Duration", "End Time",
+        "Travel & Stay", "Travel Without Stay", "Reservation Type", "Expense", "Comment", "Manager Approval",
+    ]
+    time_rows = []
+    for entry in entries:
+        user = users.get(entry.user_id)
+        travel_yes, no_stay_yes = map_travel_flags(entry.travel_stay_type)
+        time_rows.append([
+            user.name if user else "", user.employee_id if user else "", sheet_date(entry.entry_date), sheet_day(entry.entry_date),
+            entry.site_id or "", entry.area or "", entry.stay_place or "", entry.team_leader or "", entry.team_members_text or "",
+            entry.car_details or "", entry.action_details or "", time_to_sheet(entry.work_start), entry.on_site_duration or "",
+            time_to_sheet(entry.end_time), travel_yes, no_stay_yes, entry.reservation_type or "", entry.expense or "",
+            entry.comment or "", entry.manager_approval or "",
+        ])
+    write_simple_table(ws1, time_headers, time_rows)
+
+    ws2 = wb.create_sheet("Evaluation")
+    eval_headers = [
+        "Name", "ID", "Date", "Day", "Site ID", "Area", "Site Type", "Activity", "Team Members QTY", "Tower Type",
+        "RRU", "RRU Score", "Fiber", "Fiber Score", "DC", "DC Score", "Indoor HU & Survey & PSU", "Indoor Score",
+        "SW ER", "SW ER Score", "Power Cabinet", "Power Cabinet Score", "Batteries Addition", "Batteries Addition Score", "Score", "Comment",
+    ]
+    eval_rows = []
+    for entry in entries:
+        user = users.get(entry.user_id)
+        ev = eval_map.get(entry.id)
+        eval_rows.append([
+            user.name if user else "", user.employee_id if user else "", sheet_date(entry.entry_date), sheet_day(entry.entry_date),
+            entry.site_id or "", entry.area or "", getattr(ev, "site_type", "") if ev else "", getattr(ev, "activity", "") if ev else "",
+            getattr(ev, "team_members_qty", "") if ev else "", getattr(ev, "tower_type", "") if ev else "",
+            getattr(ev, "hu_rru_qty", "") if ev else "", getattr(ev, "hu_rru_score", "") if ev else "",
+            getattr(ev, "fiber_qty", "") if ev else "", getattr(ev, "fiber_score", "") if ev else "",
+            getattr(ev, "dc_qty", "") if ev else "", getattr(ev, "dc_score", "") if ev else "",
+            getattr(ev, "indoor_hu_survey_psu_qty", "") if ev else "", getattr(ev, "indoor_hu_survey_psu_score", "") if ev else "",
+            getattr(ev, "sw_er_qty", "") if ev else "", getattr(ev, "sw_er_score", "") if ev else "",
+            getattr(ev, "power_cabinet", "") if ev else "", getattr(ev, "power_cabinet_score", "") if ev else "",
+            getattr(ev, "batteries_addition", "") if ev else "", getattr(ev, "batteries_addition_score", "") if ev else "",
+            getattr(ev, "final_score", "") if ev else "", getattr(ev, "comment", "") if ev else "",
+        ])
+    write_simple_table(ws2, eval_headers, eval_rows)
+
+    stream = BytesIO()
+    wb.save(stream)
+    stream.seek(0)
+    return Response(
+        content=stream.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="all_users_{month_value}.xlsx"'},
+    )
+
 @router.get("/settings")
 def settings_page(request: Request, db: Session = Depends(get_db)):
-    profile = get_profile(request, db)
+    profile = ensure_profile(request, db)
+    if isinstance(profile, RedirectResponse):
+        return profile
     return templates.TemplateResponse(
         "setup_profile.html",
-        {"request": request, "profile": profile, "month_label": current_month_label(), "is_settings": True, "title": "Settings"},
+        {
+            "request": request,
+            "profile": profile,
+            "month_label": current_month_label(),
+            "is_settings": True,
+            "is_admin": is_admin(profile),
+            "title": "Settings",
+        },
     )
 
 
