@@ -1,11 +1,20 @@
 {% extends 'base.html' %}
 {% block content %}
+
 <h1>My Daily Records</h1>
+<p class="muted">Track, complete, and manage your daily submissions</p>
+
 <div class="toolbar mb">
-  <a class="secondary-btn small-btn" href="/export/my-month?month={{ month_value }}">Export Current Month</a>
+  <a class="secondary-btn small-btn"
+     href="/export/my-month?month={{ month_value }}">
+    Export Current Month
+  </a>
 </div>
-<div class="card">
+
+<section class="card">
+
   {% if records %}
+
   <table>
     <thead>
       <tr>
@@ -18,30 +27,66 @@
         <th>Actions</th>
       </tr>
     </thead>
+
     <tbody>
       {% for entry in records %}
       <tr>
+
         <td>{{ entry.entry_date }}</td>
         <td>{{ entry.site_id }}</td>
-        <td>{{ entry.area or '-' }}</td>
-        <td>{{ entry.travel_stay_type or '-' }}</td>
-        <td>{% if eval_map.get(entry.id) %}Done{% else %}<a href="/submission/{{ entry.id }}/evaluation">Complete Step 2</a>{% endif %}</td>
-        <td><span class="badge">{{ entry.submission_status }}</span></td>
+        <td>{{ entry.area if entry.area else '-' }}</td>
+        <td>{{ entry.travel_stay_type if entry.travel_stay_type else '-' }}</td>
+
+        <!-- Evaluation -->
         <td>
-          {% if entry.manager_approval != 'approved' %}
-            <a href="/submission/{{ entry.id }}/edit">Edit Time Sheet</a>
-            {% if eval_map.get(entry.id) %}<span class="divider">|</span>{% endif %}
-          {% endif %}
           {% if eval_map.get(entry.id) %}
-            <a href="/submission/{{ entry.id }}/evaluation">Edit Evaluation</a>
+            <span class="badge success">Done</span>
+          {% else %}
+            <a href="/submission/{{ entry.id }}/evaluation">
+              Complete Step 2
+            </a>
           {% endif %}
         </td>
+
+        <!-- Status -->
+        <td>
+          <span class="badge">{{ entry.submission_status }}</span>
+        </td>
+
+        <!-- Actions -->
+        <td>
+
+          {% if entry.manager_approval != 'approved' %}
+
+            <a href="/submission/{{ entry.id }}/edit">
+              Edit Time Sheet
+            </a>
+
+          {% endif %}
+
+          {% if eval_map.get(entry.id) and entry.manager_approval != 'approved' %}
+            <span class="divider">|</span>
+            <a href="/submission/{{ entry.id }}/evaluation">
+              Edit Evaluation
+            </a>
+          {% endif %}
+
+          {% if entry.manager_approval == 'approved' %}
+            <span class="muted">Locked</span>
+          {% endif %}
+
+        </td>
+
       </tr>
       {% endfor %}
     </tbody>
+
   </table>
+
   {% else %}
-  <p class="muted">No daily records yet.</p>
+    <p class="muted">No daily records yet.</p>
   {% endif %}
-</div>
+
+</section>
+
 {% endblock %}
