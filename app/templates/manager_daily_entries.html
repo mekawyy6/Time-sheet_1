@@ -1,11 +1,20 @@
 {% extends 'base.html' %}
 {% block content %}
+
 <h1>All Daily Submissions</h1>
+<p class="muted">Team-wide daily tracking and evaluation status</p>
+
 <div class="toolbar mb">
-  <a class="secondary-btn small-btn" href="/manager/export/team-month?month={{ month_value }}">Export Current Month</a>
+  <a class="secondary-btn small-btn"
+     href="/manager/export/team-month?month={{ month_value }}">
+    Export Current Month
+  </a>
 </div>
-<div class="card">
+
+<section class="card">
+
   {% if records %}
+
   <table>
     <thead>
       <tr>
@@ -20,30 +29,55 @@
         <th>Action</th>
       </tr>
     </thead>
+
     <tbody>
       {% for entry, employee in records %}
       <tr>
+
         <td>{{ entry.entry_date }}</td>
         <td>{{ employee.name }}</td>
         <td>{{ entry.site_id }}</td>
-        <td>{{ entry.area or '-' }}</td>
-        <td>{{ entry.travel_stay_type or '-' }}</td>
-        <td>{% if eval_map.get(entry.id) %}Done{% else %}Missing{% endif %}</td>
-        <td><span class="badge">{{ entry.submission_status }}</span></td>
-        <td>{{ entry.manager_approval }}</td>
+        <td>{{ entry.area if entry.area else '-' }}</td>
+        <td>{{ entry.travel_stay_type if entry.travel_stay_type else '-' }}</td>
+
+        <!-- Evaluation status -->
         <td>
           {% if eval_map.get(entry.id) %}
-          <a href="/manager/review/{{ entry.id }}">Review</a>
+            <span class="badge success">Done</span>
           {% else %}
-          -
+            <span class="badge warning">Missing</span>
           {% endif %}
         </td>
+
+        <!-- Submission status -->
+        <td>
+          <span class="badge">{{ entry.submission_status }}</span>
+        </td>
+
+        <!-- Manager approval -->
+        <td>
+          <span class="badge">{{ entry.manager_approval }}</span>
+        </td>
+
+        <!-- Actions -->
+        <td>
+          {% if eval_map.get(entry.id) %}
+            <a href="/manager/review/{{ entry.id }}">Review</a>
+          {% else %}
+            <span class="muted">-</span>
+          {% endif %}
+        </td>
+
       </tr>
       {% endfor %}
     </tbody>
+
   </table>
+
   {% else %}
-  <p class="muted">No records yet.</p>
+    <p class="muted">No records found for this month.</p>
   {% endif %}
-</div>
+
+</section>
+
 {% endblock %}
