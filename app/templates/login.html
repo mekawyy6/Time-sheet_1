@@ -1,23 +1,48 @@
 {% extends 'base.html' %}
 {% block content %}
+
 <div class="auth-card">
-  <h1>Login</h1>
-  <p class="muted">Sign in to continue.</p>
+
+  <h1>Welcome Back</h1>
+  <p class="muted">Sign in to your account to continue</p>
+
   {% if error %}
     <div class="alert">{{ error }}</div>
   {% endif %}
+
   <form method="post" action="/login" class="form-grid">
-    <label>Email
-      <input type="email" name="email" required />
+
+    <label>
+      Email
+      <input type="email" name="email" required autocomplete="username" />
     </label>
-    <label>Password
-      <input type="password" name="password" required />
+
+    <label>
+      Password
+      <input type="password" name="password" required autocomplete="current-password" />
     </label>
+
     <button type="submit">Login</button>
+
   </form>
+
+  <!-- Demo credentials -->
   <div class="demo-box">
-    <div><strong>Manager:</strong> manager@example.com / admin123</div>
-    <div><strong>User:</strong> user@example.com / user123</div>
+
+    <h4>Demo Accounts</h4>
+
+    <div class="demo-item">
+      <strong>Manager</strong>
+      <span>manager@example.com / admin123</span>
+    </div>
+
+    <div class="demo-item">
+      <strong>User</strong>
+      <span>user@example.com / user123</span>
+    </div>
+
   </div>
+
 </div>
+
 {% endblock %}
