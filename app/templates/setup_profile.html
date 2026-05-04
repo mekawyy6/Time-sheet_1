@@ -1,18 +1,37 @@
-
 {% extends 'base.html' %}
 {% block content %}
-<h1>{% if is_settings %}Settings{% else %}Setup Profile{% endif %}</h1>
-<p class="muted">Save your fixed details once. Team leader stays editable inside each daily submission.</p>
-<form method="post" action="/setup" class="card form-grid auto-fill-form" style="max-width:560px;">
-  <label>Full Name
-    <input type="text" name="full_name" value="{{ profile.name if profile else '' }}" required />
-  </label>
-  <label>Employee ID
-    <input type="text" name="employee_id" value="{{ profile.employee_id if profile else '' }}" required />
-  </label>
-  <div class="actions-row">
-    {% if is_settings %}<a class="secondary-btn" href="/dashboard">Back</a>{% endif %}
-    <button type="submit">Save{% if not is_settings %} & Continue{% endif %}</button>
+<h1>{% if is_settings %}Settings{% else %}Login{% endif %}</h1>
+
+{% if error %}
+  <div class="alert">{{ error }}</div>
+{% endif %}
+
+{% if is_settings %}
+  <p class="muted">Your account information is locked by the approved team list.</p>
+  <div class="card form-grid auto-fill-form" style="max-width:560px;">
+    <label>Full Name
+      <input type="text" value="{{ profile.name if profile else '' }}" readonly />
+    </label>
+    <label>Employee ID
+      <input type="text" value="{{ profile.employee_id if profile else '' }}" readonly />
+    </label>
+    <div class="actions-row">
+      <a class="secondary-btn" href="/dashboard">Back</a>
+      <a class="secondary-btn" href="/logout">Logout</a>
+    </div>
   </div>
-</form>
+{% else %}
+  <p class="muted">Enter your Employee ID and password.</p>
+  <form method="post" action="/setup" class="card form-grid auto-fill-form" style="max-width:560px;">
+    <label>Employee ID
+      <input type="text" name="employee_id" required autocomplete="username" />
+    </label>
+    <label>Password
+      <input type="password" name="password" required autocomplete="current-password" />
+    </label>
+    <div class="actions-row">
+      <button type="submit">Login</button>
+    </div>
+  </form>
+{% endif %}
 {% endblock %}
