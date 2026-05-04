@@ -1,32 +1,204 @@
 {% extends 'base.html' %}
+
 {% block content %}
+
 <h1>Site Evaluation</h1>
-<p class="muted">Step 2 of 2 — complete the evaluation and save or submit.</p>
-{% if error %}<div class="alert">{{ error }}</div>{% endif %}
-<div class="card summary-box">
+
+<p class="muted">Step 2 of 2 — complete evaluation and save or submit.</p>
+
+{% if error %}
+  <div class="alert">{{ error }}</div>
+{% endif %}
+
+<!-- ================= TIME SHEET SUMMARY ================= -->
+<div class="card summary-box mt">
+
   <h3>Time Sheet Summary</h3>
+
   <div class="grid two compact-grid">
-    <div><strong>Date:</strong> {{ entry.entry_date }}</div><div><strong>Site ID:</strong> {{ entry.site_id }}</div>
-    <div><strong>Area:</strong> {{ entry.area }}</div><div><strong>Stay Place:</strong> {{ entry.stay_place or '-' }}</div>
-    <div><strong>Duration:</strong> {{ entry.on_site_duration or '-' }}</div><div><strong>Status:</strong> {{ entry.submission_status }}</div>
+
+    <div><strong>Date:</strong> {{ entry.entry_date }}</div>
+    <div><strong>Site ID:</strong> {{ entry.site_id }}</div>
+
+    <div><strong>Area:</strong> {{ entry.area }}</div>
+    <div><strong>Stay Place:</strong> {{ entry.stay_place or '-' }}</div>
+
+    <div><strong>Duration:</strong> {{ entry.on_site_duration or '-' }}</div>
+    <div><strong>Status:</strong> {{ entry.submission_status }}</div>
+
   </div>
+
 </div>
-<form method="post" action="/submission/{{ entry.id }}/evaluation" class="card form-grid wide mt auto-fill-form">
-  <label>Site Type<select name="site_type" required><option value="">Select site type</option>{% for item in site_types %}<option value="{{ item }}" {% if form_data.site_type is defined and form_data.site_type == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
-  <label>Team Members QTY<input type="number" step="1" min="1" name="team_members_qty" value="{{ form_data.team_members_qty if form_data.team_members_qty is defined else '' }}" required /></label>
-  <label>Tower Type<select name="tower_type" required><option value="">Select tower type</option>{% for item in tower_types %}<option value="{{ item }}" {% if form_data.tower_type is defined and form_data.tower_type == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
-  <fieldset class="full checkbox-group required-group"><legend>Activity</legend><div class="checkbox-grid">{% set existing_activity = form_data.activity if form_data.activity is defined else [] %}{% for item in action_options %}<label class="check-item"><input type="checkbox" name="activity" value="{{ item }}" {% if item in existing_activity %}checked{% endif %}/> {{ item }}</label>{% endfor %}</div></fieldset>
+
+<!-- ================= FORM ================= -->
+<form method="post"
+      action="/submission/{{ entry.id }}/evaluation"
+      class="card form-grid wide mt auto-fill-form">
+
+  <!-- Site + Team -->
+  <label>
+    Site Type
+    <select name="site_type" required>
+      <option value="">Select site type</option>
+      {% for item in site_types %}
+        <option value="{{ item }}"
+          {% if form_data.site_type is defined and form_data.site_type == item %}selected{% endif %}>
+          {{ item }}
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label>
+    Team Members QTY
+    <input type="number" step="1" min="1"
+           name="team_members_qty"
+           value="{{ form_data.team_members_qty if form_data.team_members_qty is defined else '' }}"
+           required />
+  </label>
+
+  <label>
+    Tower Type
+    <select name="tower_type" required>
+      <option value="">Select tower type</option>
+      {% for item in tower_types %}
+        <option value="{{ item }}"
+          {% if form_data.tower_type is defined and form_data.tower_type == item %}selected{% endif %}>
+          {{ item }}
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <!-- ================= ACTIVITY ================= -->
+  <fieldset class="full checkbox-group required-group">
+    <legend>Activity</legend>
+
+    <div class="checkbox-grid">
+
+      {% set existing_activity = form_data.activity if form_data.activity is defined else [] %}
+
+      {% for item in action_options %}
+        <label class="check-item">
+          <input type="checkbox"
+                 name="activity"
+                 value="{{ item }}"
+                 {% if item in existing_activity %}checked{% endif %}>
+          {{ item }}
+        </label>
+      {% endfor %}
+
+    </div>
+  </fieldset>
+
+  <!-- ================= QUANTITIES ================= -->
   <div class="full grid two compact-grid">
-    <label>RRU Qty<input type="number" step="0.01" min="0" name="rru_qty" value="{{ form_data.rru_qty if form_data.rru_qty is defined else '' }}" required /></label>
-    <label>Fiber Qty<input type="number" step="0.01" min="0" name="fiber_qty" value="{{ form_data.fiber_qty if form_data.fiber_qty is defined else '' }}" required /></label>
-    <label>DC Qty<input type="number" step="0.01" min="0" name="dc_qty" value="{{ form_data.dc_qty if form_data.dc_qty is defined else '' }}" required /></label>
-    <label>Indoor HU & Survey & PSU Qty<input type="number" step="0.01" min="0" name="indoor_hu_survey_psu_qty" value="{{ form_data.indoor_hu_survey_psu_qty if form_data.indoor_hu_survey_psu_qty is defined else '' }}" required /></label>
-    <label>SW ER Qty<input type="number" step="0.01" min="0" name="sw_er_qty" value="{{ form_data.sw_er_qty if form_data.sw_er_qty is defined else '' }}" required /></label>
+
+    <label>
+      RRU Qty
+      <input type="number" step="0.01" min="0"
+             name="rru_qty"
+             value="{{ form_data.rru_qty if form_data.rru_qty is defined else '' }}"
+             required />
+    </label>
+
+    <label>
+      Fiber Qty
+      <input type="number" step="0.01" min="0"
+             name="fiber_qty"
+             value="{{ form_data.fiber_qty if form_data.fiber_qty is defined else '' }}"
+             required />
+    </label>
+
+    <label>
+      DC Qty
+      <input type="number" step="0.01" min="0"
+             name="dc_qty"
+             value="{{ form_data.dc_qty if form_data.dc_qty is defined else '' }}"
+             required />
+    </label>
+
+    <label>
+      Indoor HU / PSU Qty
+      <input type="number" step="0.01" min="0"
+             name="indoor_hu_survey_psu_qty"
+             value="{{ form_data.indoor_hu_survey_psu_qty if form_data.indoor_hu_survey_psu_qty is defined else '' }}"
+             required />
+    </label>
+
+    <label>
+      SW ER Qty
+      <input type="number" step="0.01" min="0"
+             name="sw_er_qty"
+             value="{{ form_data.sw_er_qty if form_data.sw_er_qty is defined else '' }}"
+             required />
+    </label>
+
   </div>
-  <label>Power Cabinet<select name="power_cabinet" required><option value="">Select</option>{% for item in yes_no_options %}<option value="{{ item }}" {% if form_data.power_cabinet is defined and form_data.power_cabinet == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
-  <label>Batteries Addition<select name="batteries_addition" required><option value="">Select</option>{% for item in yes_no_options %}<option value="{{ item }}" {% if form_data.batteries_addition is defined and form_data.batteries_addition == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
-  {% if calculated %}<div class="full score-grid"><div class="inline-note">Current Score: <strong>{{ '%.4f'|format(calculated.final_score or 0) }}</strong></div></div>{% endif %}
-  <label class="full">Comment<textarea name="comment" rows="3">{{ form_data.comment if form_data.comment is defined else '' }}</textarea></label>
-  <div class="full actions-row three-actions"><button type="submit" name="submit_action" value="save" class="secondary-btn button-link">Save Draft</button><button type="submit" name="submit_action" value="submit">Final Submit</button></div>
+
+  <!-- ================= YES / NO ================= -->
+  <label>
+    Power Cabinet
+    <select name="power_cabinet" required>
+      <option value="">Select</option>
+      {% for item in yes_no_options %}
+        <option value="{{ item }}"
+          {% if form_data.power_cabinet is defined and form_data.power_cabinet == item %}selected{% endif %}>
+          {{ item }}
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label>
+    Batteries Addition
+    <select name="batteries_addition" required>
+      <option value="">Select</option>
+      {% for item in yes_no_options %}
+        <option value="{{ item }}"
+          {% if form_data.batteries_addition is defined and form_data.batteries_addition == item %}selected{% endif %}>
+          {{ item }}
+        </option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <!-- ================= SCORE ================= -->
+  {% if calculated %}
+  <div class="full score-grid">
+    <div class="inline-note">
+      Current Score:
+      <strong>{{ '%.4f'|format(calculated.final_score or 0) }}</strong>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ================= COMMENT ================= -->
+  <label class="full">
+    Comment
+    <textarea name="comment" rows="3">
+      {{ form_data.comment if form_data.comment is defined else '' }}
+    </textarea>
+  </label>
+
+  <!-- ================= ACTIONS ================= -->
+  <div class="full actions-row three-actions">
+
+    <button type="submit"
+            name="submit_action"
+            value="save"
+            class="secondary-btn button-link">
+      Save Draft
+    </button>
+
+    <button type="submit"
+            name="submit_action"
+            value="submit">
+      Final Submit
+    </button>
+
+  </div>
+
 </form>
+
 {% endblock %}
