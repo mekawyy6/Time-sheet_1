@@ -1302,7 +1302,7 @@ def manifest():
 @router.get("/sw.js")
 def sw():
     js = """
-const CACHE_NAME = 'field-timesheet-v4';
+const CACHE_NAME = 'field-timesheet-v6';
 const STATIC_URLS = [
   '/static/css/style.css'
 ];
