@@ -1,13 +1,24 @@
-
 {% extends 'base.html' %}
 {% block content %}
 <h1>Welcome, {{ profile.name }}</h1>
 <p class="muted">{{ month_label }} summary</p>
-<div class="grid two">
+
+{% if is_admin %}
+<section class="card mt">
+  <h2>Manager Tools</h2>
+  <p class="muted">View team monthly summary and export all users' sheets.</p>
+  <div class="grid two">
+    <a class="card action" href="/manager"><h3>Manager Dashboard</h3><p>Monthly team summary.</p></a>
+    <a class="card action" href="/manager/export-all?month={{ month_value }}"><h3>Export All Sheets</h3><p>Time Sheet + Evaluation for all users.</p></a>
+  </div>
+</section>
+{% endif %}
+
+<div class="grid two mt">
   <a class="card action" href="/submission/new"><h3>New Daily Submission</h3><p>Time Sheet ثم Evaluation في خطوتين.</p></a>
   <a class="card action" href="/records"><h3>My Records</h3><p>راجع السجلات وعدّل أو احذف أي يوم.</p></a>
   <a class="card action" href="/export?month={{ month_value }}"><h3>Export Monthly Excel</h3><p>نزّل Excel الشهر الحالي.</p></a>
-  <a class="card action" href="/settings"><h3>Settings</h3><p>عدّل الاسم أو الـ ID في أي وقت.</p></a>
+  <a class="card action" href="/settings"><h3>Settings</h3><p>راجع بيانات الحساب أو اعمل Logout.</p></a>
 </div>
 <section class="card mt">
   <div class="grid two compact-grid">
