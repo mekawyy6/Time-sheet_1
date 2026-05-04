@@ -1,52 +1,103 @@
-
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{{ title if title else 'Field Timesheet' }}</title>
+
+  <title>
+    {{ title if title is defined and title else 'Field Timesheet' }}
+  </title>
+
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#1d4ed8" />
+
   <link rel="stylesheet" href="/static/css/style.css" />
 </head>
+
 <body>
+
+  <!-- Top Bar -->
+
   <header class="topbar">
     <div>
       <div class="brand">Field Timesheet</div>
-      {% if month_label %}<div class="sub-brand">{{ month_label }}</div>{% endif %}
-    </div>
-    {% if profile and profile.name %}
-      <nav>
-        <a href="/dashboard">Home</a>
-        <a href="/records">My Records</a>
-        <a href="/settings">Settings</a>
-      </nav>
-    {% endif %}
+
+```
+  {% if month_label is defined and month_label %}
+    <div class="sub-brand">{{ month_label }}</div>
+  {% endif %}
+</div>
+
+{% if profile is defined and profile %}
+<nav>
+
+  {% if is_admin is defined and is_admin %}
+    <!-- Manager links only -->
+    <a href="/manager">Manager Dashboard</a>
+  {% else %}
+    <!-- Normal user links only -->
+    <a href="/dashboard">Home</a>
+    <a href="/records">My Records</a>
+    <a href="/settings">Settings</a>
+  {% endif %}
+
+  <!-- Logout -->
+  <form method="get" action="/logout" style="display:inline; margin-left:10px;">
+    <button type="submit" style="
+      background:none;
+      border:none;
+      color:#dc2626;
+      cursor:pointer;
+      font-weight:600;
+    ">
+      Logout
+    </button>
+  </form>
+
+</nav>
+{% endif %}
+```
+
   </header>
-  <main class="container">{% block content %}{% endblock %}</main>
+
+  <!-- Main Content -->
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- JS -->
+
   <script>
     function refreshFilledState(root) {
       const controls = root.querySelectorAll('input, select, textarea');
+
       controls.forEach((el) => {
         if (el.type === 'checkbox' || el.type === 'radio' || el.readOnly) return;
+
         const hasValue = (el.value || '').trim() !== '';
         el.classList.toggle('filled', hasValue);
       });
+
       root.querySelectorAll('.required-group').forEach((group) => {
         const checked = group.querySelectorAll('input[type="checkbox"]:checked').length > 0;
         group.classList.toggle('filled-group', checked);
       });
     }
+
     document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.auto-fill-form').forEach((form) => {
         form.addEventListener('input', () => refreshFilledState(form));
         form.addEventListener('change', () => refreshFilledState(form));
         refreshFilledState(form);
       });
+
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').catch(() => {});
       }
     });
   </script>
+
 </body>
 </html>
