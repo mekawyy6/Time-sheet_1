@@ -1,60 +1,113 @@
 {% extends 'base.html' %}
 {% block content %}
+
 <h1>Manager Review</h1>
-<div class="card summary-box">
+<p class="muted">Review evaluation, check technical scores, and approve submission</p>
+
+<!-- ===== Basic Info ===== -->
+<section class="card summary-box">
+
   <div class="grid two compact-grid">
+
     <div><strong>Employee:</strong> {{ employee.name if employee else '-' }}</div>
     <div><strong>Date:</strong> {{ entry.entry_date }}</div>
+
     <div><strong>Site ID:</strong> {{ entry.site_id }}</div>
     <div><strong>Site Type:</strong> {{ evaluation.site_type or '-' }}</div>
+
     <div><strong>Activity:</strong> {{ evaluation.activity or '-' }}</div>
     <div><strong>Acceptance:</strong> {{ evaluation.acceptance or '-' }}</div>
-  </div>
-</div>
 
-<div class="card mt">
-  <h3>Technical Summary</h3>
+  </div>
+
+</section>
+
+<!-- ===== Technical Breakdown ===== -->
+<section class="card mt">
+
+  <h3>Technical Breakdown</h3>
+
   <div class="grid two compact-grid">
+
     <div>RRU Qty: <strong>{{ evaluation.hu_rru_qty or 0 }}</strong></div>
     <div>RRU Score: <strong>{{ '%.2f'|format(scores.rru_score or 0) }}</strong></div>
+
     <div>Fiber Qty: <strong>{{ evaluation.fiber_qty or 0 }}</strong></div>
     <div>Fiber Score: <strong>{{ '%.2f'|format(scores.fiber_score or 0) }}</strong></div>
+
     <div>DC Qty: <strong>{{ evaluation.dc_qty or 0 }}</strong></div>
     <div>DC Score: <strong>{{ '%.2f'|format(scores.dc_score or 0) }}</strong></div>
+
     <div>Indoor Qty: <strong>{{ evaluation.indoor_hu_survey_psu_qty or 0 }}</strong></div>
     <div>Indoor Score: <strong>{{ '%.2f'|format(scores.indoor_hu_survey_psu_score or 0) }}</strong></div>
+
     <div>SW ER Qty: <strong>{{ evaluation.sw_er_qty or 0 }}</strong></div>
     <div>SW ER Score: <strong>{{ '%.2f'|format(scores.sw_er_score or 0) }}</strong></div>
-    <div>Power Cabinet: <strong>{{ evaluation.power_cabinet or 'No' }}</strong></div>
-    <div>Batteries Addition: <strong>{{ evaluation.batteries_addition or 'No' }}</strong></div>
-  </div>
-</div>
 
+    <div>Power Cabinet: <strong>{{ evaluation.power_cabinet or 'No' }}</strong></div>
+    <div>Batteries: <strong>{{ evaluation.batteries_addition or 'No' }}</strong></div>
+
+  </div>
+
+</section>
+
+<!-- ===== Final Review Form ===== -->
 <form method="post" class="card mt auto-fill-form form-grid two">
-  <label>Violations
+
+  <h3 class="full">Manager Decision</h3>
+
+  <label>
+    Violations
     <select name="violations" required>
       {% for item in violation_options %}
-      <option value="{{ item }}" {% if evaluation.violations is not none and item == (evaluation.violations|int|string) %}selected{% endif %}>{{ item }}</option>
+        <option value="{{ item }}"
+          {% if evaluation.violations is not none and item == (evaluation.violations|string) %}selected{% endif %}>
+          {{ item }}
+        </option>
       {% endfor %}
     </select>
   </label>
-  <label>Performance
+
+  <label>
+    Performance
     <select name="performance" required>
       {% for item in performance_options %}
-      <option value="{{ item }}" {% if evaluation.performance is not none and item == (evaluation.performance|int|string) %}selected{% endif %}>{{ item }}</option>
+        <option value="{{ item }}"
+          {% if evaluation.performance is not none and item == (evaluation.performance|string) %}selected{% endif %}>
+          {{ item }}
+        </option>
       {% endfor %}
     </select>
   </label>
-  <label>Manager Approval
+
+  <label>
+    Manager Approval
     <select name="manager_approval" required>
-      <option value="approved" {% if entry.manager_approval == 'approved' %}selected{% endif %}>approved</option>
-      <option value="pending" {% if entry.manager_approval == 'pending' %}selected{% endif %}>pending</option>
+      <option value="approved" {% if entry.manager_approval == 'approved' %}selected{% endif %}>Approved</option>
+      <option value="pending" {% if entry.manager_approval == 'pending' %}selected{% endif %}>Pending</option>
+      <option value="rejected" {% if entry.manager_approval == 'rejected' %}selected{% endif %}>Rejected</option>
     </select>
   </label>
-  <div class="inline-note">Final Score after manager review: <strong>{{ '%.4f'|format(scores.final_score or 0) }}</strong></div>
-  <div class="full actions-row">
-    <a href="/manager/daily-entries" class="secondary-btn">Back</a>
-    <button type="submit">Save Review</button>
+
+  <!-- Score highlight -->
+  <div class="full inline-note">
+    Final Score after review:
+    <strong>{{ '%.4f'|format(scores.final_score or 0) }}</strong>
   </div>
+
+  <!-- Actions -->
+  <div class="full actions-row">
+
+    <a href="/manager/daily-entries" class="secondary-btn">
+      Back
+    </a>
+
+    <button type="submit">
+      Save Review
+    </button>
+
+  </div>
+
 </form>
+
 {% endblock %}
