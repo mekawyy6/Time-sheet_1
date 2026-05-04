@@ -1,29 +1,41 @@
 {% extends 'base.html' %}
+
 {% block content %}
-<h1>{{ user.name }}</h1>
-<p class="muted">{{ month_label }} overview</p>
+
+<h1>{{ user.name if user and user.name else 'User' }}</h1>
+
+<p class="muted">{{ month_label or '' }} overview</p>
+
 <div class="grid two">
+
   <a class="card action" href="/submission/new">
     <h3>New Daily Submission</h3>
     <p>Start Time Sheet then Site Evaluation in two steps.</p>
   </a>
+
   <a class="card action" href="/my-daily-records">
     <h3>My Daily Records</h3>
     <p>Review, edit, and export your submissions.</p>
   </a>
+
   <a class="card action" href="/my-evaluations">
     <h3>My Evaluation Records</h3>
     <p>Review technical evaluations and scores.</p>
   </a>
-  <a class="card action" href="/export/my-month?month={{ month_value }}">
+
+  <a class="card action" href="/export?month={{ month_value or '' }}">
     <h3>Export My Month</h3>
     <p>Download your monthly Excel file.</p>
   </a>
+
 </div>
 
 <section class="card mt">
+
   <h2>Recent Daily Submissions</h2>
+
   {% if recent_entries %}
+
     <table>
       <thead>
         <tr>
@@ -34,6 +46,7 @@
           <th>Status</th>
         </tr>
       </thead>
+
       <tbody>
       {% for entry in recent_entries %}
         <tr>
@@ -46,8 +59,11 @@
       {% endfor %}
       </tbody>
     </table>
+
   {% else %}
     <p class="muted">No records yet.</p>
   {% endif %}
+
 </section>
+
 {% endblock %}
